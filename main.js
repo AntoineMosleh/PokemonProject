@@ -49,14 +49,92 @@
 			return externalFetch(q);
 		}
 
-	function renderPokemon(data){
-		// Basic info
-		pokemonName.textContent = `${data.name} #${data.id}`;
-		const sprite = data.sprites?.other?.['official-artwork']?.front_default || data.sprites?.front_default || '';
-		pokemonSprite.src = sprite || '';
-		pokemonSprite.alt = data.name;
+			// --- French name support ---
+			// Cache for species list and mapping
+			let speciesIndex = null; // array of {name,url}
+			const FR_CACHE_KEY = 'poke_fr_name_map_v1';
+			let frNameMap = null; // { normalizedFrenchName: englishName }
 
-		// types
+			function normalizeText(t){
+				return String(t || '').trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+			}
+
+			async function loadSpeciesIndex(){
+				if(speciesIndex) return speciesIndex;
+				const res = await fetch('https://pokeapi.co/api/v2/pokemon-species?limit=2000');
+				if(!res.ok) throw new Error('Failed to load species index');
+				const data = await res.json();
+				speciesIndex = data.results || [];
+				return speciesIndex;
+			}
+
+			// Try to find english species name by a French name input.
+			// Strategy: if we have a cached map in localStorage use it; otherwise iterate species in batches
+			async function findEnglishNameByFrench(frenchQuery){
+				if(!frenchQuery) return null;
+				const key = normalizeText(frenchQuery);
+				// try cache
+				try{
+					if(!frNameMap){
+						const raw = localStorage.getItem(FR_CACHE_KEY);
+						frNameMap = raw ? JSON.parse(raw) : {};
+					}
+				}catch(e){ frNameMap = {}; }
+				if(frNameMap && frNameMap[key]) return frNameMap[key];
+
+				// Load index
+				await loadSpeciesIndex();
+
+				const batchSize = 20;
+				for(let i=0;i<speciesIndex.length;i+=batchSize){
+					const batch = speciesIndex.slice(i,i+batchSize);
+					// fetch species details in parallel for the batch
+					const ps = batch.map(s=>fetch(s.url).then(r=>r.ok? r.json(): null).catch(()=>null));
+					const results = await Promise.all(ps);
+					for(const sp of results){
+						if(!sp || !sp.names) continue;
+						const frEntry = sp.names.find(n=>n.language && n.language.name === 'fr');
+						const frName = frEntry ? frEntry.name : null;
+						if(frName){
+							const nk = normalizeText(frName);
+							frNameMap[nk] = sp.name; // english species name
+							if(nk === key){
+								// persist cache
+								try{ localStorage.setItem(FR_CACHE_KEY, JSON.stringify(frNameMap)); }catch(e){}
+								return sp.name;
+							}
+						}
+					}
+				}
+				// persist cache even if not found
+				try{ localStorage.setItem(FR_CACHE_KEY, JSON.stringify(frNameMap || {})); }catch(e){}
+				return null;
+			}
+
+	function renderPokemon(data){
+			// Basic info (will enhance with French name from species)
+			const sprite = data.sprites?.other?.['official-artwork']?.front_default || data.sprites?.front_default || '';
+			pokemonSprite.src = sprite || '';
+			pokemonSprite.alt = data.name;
+
+			// Try to fetch species to get French name
+			(async ()=>{
+				try{
+					const spRes = await fetch(data.species.url);
+					if(spRes.ok){
+						const sp = await spRes.json();
+						const fr = sp.names && sp.names.find(n=>n.language && n.language.name==='fr');
+						const displayName = fr ? `${fr.name} #${data.id}` : `${data.name} #${data.id}`;
+						pokemonName.textContent = displayName;
+					}else{
+						pokemonName.textContent = `${data.name} #${data.id}`;
+					}
+				}catch(e){
+					pokemonName.textContent = `${data.name} #${data.id}`;
+				}
+			})();
+
+			// types
 		pokemonTypes.innerHTML = '';
 		data.types.forEach(t=>{
 			const el = document.createElement('span');
@@ -118,7 +196,16 @@
 		}
 		searchError.classList.add('hidden');
 		try{
-					const data = await fetchPokemonWrapper(q);
+				let data;
+				try{
+					data = await fetchPokemonWrapper(q);
+				}catch(err){
+					// Try resolving French name -> english
+					const eng = await findEnglishNameByFrench(q).catch(()=>null);
+					if(eng){
+						data = await fetchPokemonWrapper(eng);
+					} else throw err;
+				}
 			renderPokemon(data);
 			showDetail();
 		}catch(err){
@@ -170,58 +257,81 @@
 
 		// Provide a small helper to fetch two pokemons in parallel
 			async function fetchTwo(p1, p2){
-				const [a,b] = await Promise.all([fetchPokemonWrapper(p1), fetchPokemonWrapper(p2)]);
-				return [a,b];
+					async function resolveOne(q){
+						try{ return await fetchPokemonWrapper(q); }
+						catch(e){
+							const eng = await findEnglishNameByFrench(q).catch(()=>null);
+							if(eng) return fetchPokemonWrapper(eng);
+							throw e;
+						}
+					}
+					const [a,b] = await Promise.all([resolveOne(p1), resolveOne(p2)]);
+					return [a,b];
 			}
 
 		function renderCompare(poke1, poke2){
-			// Common labels from poke1.stats order
-			const labels = poke1.stats.map(s=>s.stat.name.toUpperCase());
-			const values1 = poke1.stats.map(s=>s.base_stat);
-			const values2 = poke2.stats.map(s=>s.base_stat);
+				// Prepare labels and values
+				const labels = poke1.stats.map(s=>s.stat.name.toUpperCase());
+				const values1 = poke1.stats.map(s=>s.base_stat);
+				const values2 = poke2.stats.map(s=>s.base_stat);
 
-			// Card 1
-			compareName1.textContent = `${poke1.name} #${poke1.id}`;
-			compareSprite1.src = poke1.sprites?.other?.['official-artwork']?.front_default || poke1.sprites?.front_default || '';
-			compareTypes1.innerHTML = '';
-			poke1.types.forEach(t=>{const el=document.createElement('span');el.className='type';el.textContent=t.type.name;compareTypes1.appendChild(el)});
-			compareStats1.innerHTML = '';
-			poke1.stats.forEach(s=>{const li=document.createElement('li');li.innerHTML=`<span style="text-transform:capitalize">${s.stat.name}</span><strong>${s.base_stat}</strong>`; compareStats1.appendChild(li)});
+				// fetch species for french names in parallel
+				const sp1Promise = fetch(poke1.species.url).then(r=>r.ok? r.json(): null).catch(()=>null);
+				const sp2Promise = fetch(poke2.species.url).then(r=>r.ok? r.json(): null).catch(()=>null);
+				Promise.all([sp1Promise, sp2Promise]).then(([sp1, sp2])=>{
+					const fr1 = sp1 && sp1.names && sp1.names.find(n=>n.language && n.language.name==='fr');
+					const fr2 = sp2 && sp2.names && sp2.names.find(n=>n.language && n.language.name==='fr');
+					const name1 = fr1 ? `${fr1.name} #${poke1.id}` : `${poke1.name} #${poke1.id}`;
+					const name2 = fr2 ? `${fr2.name} #${poke2.id}` : `${poke2.name} #${poke2.id}`;
 
-			// Card 2
-			compareName2.textContent = `${poke2.name} #${poke2.id}`;
-			compareSprite2.src = poke2.sprites?.other?.['official-artwork']?.front_default || poke2.sprites?.front_default || '';
-			compareTypes2.innerHTML = '';
-			poke2.types.forEach(t=>{const el=document.createElement('span');el.className='type';el.textContent=t.type.name;compareTypes2.appendChild(el)});
-			compareStats2.innerHTML = '';
-			poke2.stats.forEach(s=>{const li=document.createElement('li');li.innerHTML=`<span style="text-transform:capitalize">${s.stat.name}</span><strong>${s.base_stat}</strong>`; compareStats2.appendChild(li)});
+					// Card 1
+					compareName1.textContent = name1;
+					compareSprite1.src = poke1.sprites?.other?.['official-artwork']?.front_default || poke1.sprites?.front_default || '';
+					compareTypes1.innerHTML = '';
+					poke1.types.forEach(t=>{const el=document.createElement('span');el.className='type';el.textContent=t.type.name;compareTypes1.appendChild(el)});
+					compareStats1.innerHTML = '';
+					poke1.stats.forEach(s=>{const li=document.createElement('li');li.innerHTML=`<span style="text-transform:capitalize">${s.stat.name}</span><strong>${s.base_stat}</strong>`; compareStats1.appendChild(li)});
 
-			// Chart (radar)
-			if(compareChart){ try{ compareChart.destroy(); }catch(e){} }
-			const ctx = compareChartCanvas.getContext('2d');
-			compareChart = new Chart(ctx, {
-				type: 'radar',
-				data: {
-					labels: labels,
-					datasets: [
-						{
-							label: poke1.name,
-							data: values1,
-							backgroundColor: 'rgba(239,83,80,0.25)',
-							borderColor: 'rgba(239,83,80,1)'
+					// Card 2
+					compareName2.textContent = name2;
+					compareSprite2.src = poke2.sprites?.other?.['official-artwork']?.front_default || poke2.sprites?.front_default || '';
+					compareTypes2.innerHTML = '';
+					poke2.types.forEach(t=>{const el=document.createElement('span');el.className='type';el.textContent=t.type.name;compareTypes2.appendChild(el)});
+					compareStats2.innerHTML = '';
+					poke2.stats.forEach(s=>{const li=document.createElement('li');li.innerHTML=`<span style="text-transform:capitalize">${s.stat.name}</span><strong>${s.base_stat}</strong>`; compareStats2.appendChild(li)});
+
+					// Chart (radar)
+					if(compareChart){ try{ compareChart.destroy(); }catch(e){} }
+					const ctx = compareChartCanvas.getContext('2d');
+					compareChart = new Chart(ctx, {
+						type: 'radar',
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									label: fr1 ? fr1.name : poke1.name,
+									data: values1,
+									backgroundColor: 'rgba(239,83,80,0.25)',
+									borderColor: 'rgba(239,83,80,1)'
+								},
+								{
+									label: fr2 ? fr2.name : poke2.name,
+									data: values2,
+									backgroundColor: 'rgba(54,162,235,0.25)',
+									borderColor: 'rgba(54,162,235,1)'
+								}
+							]
 						},
-						{
-							label: poke2.name,
-							data: values2,
-							backgroundColor: 'rgba(54,162,235,0.25)',
-							borderColor: 'rgba(54,162,235,1)'
-						}
-					]
-				},
-				options: {responsive:true, maintainAspectRatio:false, scales:{r:{beginAtZero:true}}}
-			});
+						options: {responsive:true, maintainAspectRatio:false, scales:{r:{beginAtZero:true}}}
+					});
 
-			compareResults.classList.remove('hidden');
+					compareResults.classList.remove('hidden');
+				}).catch(()=>{
+					// fallback: render without french names
+					compareName1.textContent = `${poke1.name} #${poke1.id}`;
+					compareName2.textContent = `${poke2.name} #${poke2.id}`;
+					compareResults.classList.remove('hidden');
+				});
 		}
 
 		// Wire compare form
