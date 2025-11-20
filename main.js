@@ -36,16 +36,18 @@
 		targetEl.classList.remove('hidden');
 	}
 
-	async function fetchPokemon(query){
-		const url = API_BASE + encodeURIComponent(String(query).trim().toLowerCase());
-		const res = await fetch(url);
-		if(!res.ok){
-			const err = new Error(`Pokémon non trouvé`);
-			err.status = res.status;
-			throw err;
+		// Use fetchPokemon from api.js (attached to window/global)
+		const externalFetch = (typeof fetchPokemon === 'function') ? fetchPokemon : null;
+		async function fetchPokemonWrapper(q){
+			if(!externalFetch){
+				// fallback: do a direct fetch
+				const url = API_BASE + encodeURIComponent(String(q).trim().toLowerCase());
+				const res = await fetch(url);
+				if(!res.ok){ const err = new Error('Pokémon non trouvé'); err.status = res.status; throw err; }
+				return res.json();
+			}
+			return externalFetch(q);
 		}
-		return res.json();
-	}
 
 	function renderPokemon(data){
 		// Basic info
@@ -116,7 +118,7 @@
 		}
 		searchError.classList.add('hidden');
 		try{
-			const data = await fetchPokemon(q);
+					const data = await fetchPokemonWrapper(q);
 			renderPokemon(data);
 			showDetail();
 		}catch(err){
@@ -167,10 +169,10 @@
 		});
 
 		// Provide a small helper to fetch two pokemons in parallel
-		async function fetchTwo(p1, p2){
-			const [a,b] = await Promise.all([fetchPokemon(p1), fetchPokemon(p2)]);
-			return [a,b];
-		}
+			async function fetchTwo(p1, p2){
+				const [a,b] = await Promise.all([fetchPokemonWrapper(p1), fetchPokemonWrapper(p2)]);
+				return [a,b];
+			}
 
 		function renderCompare(poke1, poke2){
 			// Common labels from poke1.stats order

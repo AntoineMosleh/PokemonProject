@@ -1,0 +1,16 @@
+{
+  "name": "pokemon-api-ui",
+  "version": "1.0.0",
+  "description": "Small Pokémon finder and comparator using PokeAPI",
+  "main": "main.js",
+  "scripts": {
+    "test": "jest --config=jest.config.cjs",
+    "test:watch": "jest --watchAll --config=jest.config.cjs"
+  },
+  "keywords": ["pokemon", "pokeapi", "chartjs"],
+  "author": "Antoine Mosleh",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.6.1"
+  }
+}
