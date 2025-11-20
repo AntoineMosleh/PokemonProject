@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Pokémon Finder</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div class="app">
+			<header>
+				<h1>Pokémon Finder</h1>
+			</header>
+
+			<main>
+				<!-- Search screen -->
+				<section id="search-screen" class="screen">
+					<form id="search-form" class="search-form" autocomplete="off">
+						<input id="search-input" type="text" placeholder="Entrez le nom ou l'ID (ex: pikachu ou 25)" />
+						<button type="submit">Rechercher</button>
+					</form>
+					<div id="search-error" class="message hidden"></div>
+					<div id="search-hint" class="hint">Exemples : <strong>pikachu</strong>, <strong>1</strong>, <strong>25</strong></div>
+				</section>
+
+						<!-- Compare screen -->
+						<section id="compare-screen" class="screen hidden">
+							<button id="back-compare-btn" class="back">← Retour</button>
+							<h2>Comparer 2 Pokémon</h2>
+							<form id="compare-form" class="compare-form">
+								<input id="compare-input-1" type="text" placeholder="Nom ou ID du 1er Pokémon" />
+								<input id="compare-input-2" type="text" placeholder="Nom ou ID du 2ème Pokémon" />
+								<button type="submit">Comparer</button>
+							</form>
+							<div id="compare-error" class="message hidden"></div>
+							<div id="compare-results" class="compare-results hidden">
+								<div class="compare-cards">
+									<div class="compare-card" id="compare-card-1">
+										<img id="compare-sprite-1" alt="sprite1" />
+										<h3 id="compare-name-1"></h3>
+										<div id="compare-types-1" class="types"></div>
+										<ul id="compare-stats-1" class="stats-list"></ul>
+									</div>
+									<div class="compare-card" id="compare-card-2">
+										<img id="compare-sprite-2" alt="sprite2" />
+										<h3 id="compare-name-2"></h3>
+										<div id="compare-types-2" class="types"></div>
+										<ul id="compare-stats-2" class="stats-list"></ul>
+									</div>
+								</div>
+								<div class="chart-wrap compare-chart">
+									<canvas id="compare-chart"></canvas>
+								</div>
+							</div>
+						</section>
+
+						<!-- Detail screen -->
+						<section id="detail-screen" class="screen hidden">
+					<button id="back-btn" class="back">← Retour</button>
+					<div id="pokemon-card" class="card">
+						<div class="card-left">
+							<img id="pokemon-sprite" alt="sprite" />
+							<h2 id="pokemon-name"></h2>
+							<div id="pokemon-types" class="types"></div>
+						</div>
+						<div class="card-right">
+							<h3>Statistiques</h3>
+							<ul id="stats-list" class="stats-list"></ul>
+							<div class="chart-wrap">
+								<canvas id="stats-chart"></canvas>
+							</div>
+						</div>
+					</div>
+					<div id="detail-error" class="message hidden"></div>
+				</section>
+			</main>
+
+			<footer>
+				Données depuis <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokeAPI</a>
+			</footer>
+		</div>
+
+		<!-- Chart.js (from CDN) then app script -->
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="main.js"></script>
+	</body>
+</html>
+

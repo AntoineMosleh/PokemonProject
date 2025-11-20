@@ -1,0 +1,62 @@
+:root{
+	--bg: #f6f7fb;
+	--card: #ffffff;
+	--muted: #666;
+	--accent: #ef5350;
+}
+*{box-sizing:border-box}
+html,body,#app{height:100%}
+body{
+	font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;
+	margin:0;
+	background:linear-gradient(180deg,#eef2f7 0%,var(--bg) 100%);
+	color:#222;
+	-webkit-font-smoothing:antialiased;
+	-moz-osx-font-smoothing:grayscale;
+}
+.app{max-width:980px;margin:24px auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+header h1{margin:0;font-size:1.4rem}
+main{background:transparent}
+.screen{padding:12px}
+.hidden{display:none}
+.search-form{display:flex;gap:8px;align-items:center}
+.search-form input{flex:1;padding:10px 12px;border:1px solid #d8dbe0;border-radius:8px;font-size:1rem}
+.search-form button{padding:10px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer}
+.search-form button:hover{opacity:.95}
+.hint{margin-top:10px;color:var(--muted);font-size:.9rem}
+.message{margin-top:10px;color:#b00020}
+.back{background:#fff;border:1px solid #e2e6eb;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:12px}
+.card{display:flex;gap:16px;background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(21,32,64,.06);align-items:flex-start}
+.card-left{width:220px;text-align:center}
+.card-left img{width:150px;height:150px;object-fit:contain;background:linear-gradient(180deg,#fff,#f4f6fa);border-radius:12px;padding:8px}
+#pokemon-name{margin:8px 0 4px;text-transform:capitalize}
+.types{display:flex;gap:8px;justify-content:center}
+.types .type{padding:6px 8px;border-radius:999px;background:#f3f4f6;color:#222;font-size:.85rem}
+.card-right{flex:1}
+.stats-list{list-style:none;padding:0;margin:0 0 12px}
+.stats-list li{display:flex;justify-content:space-between;padding:6px 10px;border-radius:8px;background:#fbfcfe;margin-bottom:6px;border:1px solid #eef2f6}
+.chart-wrap{background:#fff;padding:8px;border-radius:8px}
+footer{margin-top:12px;color:var(--muted);font-size:.85rem}
+
+@media (max-width:760px){
+	.card{flex-direction:column;align-items:center}
+	.card-left{width:100%}
+	.card-right{width:100%}
+}
+
+/* Comparison styles */
+.compare-form{display:flex;gap:8px;align-items:center;margin:12px 0}
+.compare-form input{flex:1;padding:8px;border:1px solid #e1e4ea;border-radius:8px}
+.compare-form button{padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:8px}
+.compare-results{margin-top:12px}
+.compare-cards{display:flex;gap:12px;align-items:flex-start}
+.compare-card{flex:1;background:#fff;padding:10px;border-radius:10px;border:1px solid #eef2f6;text-align:center}
+.compare-card img{width:120px;height:120px;object-fit:contain}
+.compare-chart{margin-top:12px;height:340px}
+
+@media (max-width:760px){
+	.compare-cards{flex-direction:column}
+	.compare-chart{height:260px}
+}
+
